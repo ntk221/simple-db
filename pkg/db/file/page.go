@@ -8,22 +8,22 @@ import (
 
 type Page struct {
 	bb      *bytes.Buffer
-	charset string
+	charSet string
 }
 
-const DEFAULT_CHARSET = "US-ASCII"
+const DefaultCharset = "US-ASCII"
 
-func NewPage(blocksize int) *Page {
+func NewPage(blockSize int) *Page {
 	return &Page{
-		bb:      bytes.NewBuffer(make([]byte, blocksize)),
-		charset: DEFAULT_CHARSET,
+		bb:      bytes.NewBuffer(make([]byte, blockSize)),
+		charSet: DefaultCharset,
 	}
 }
 
 func NewPageFromBytes(b []byte) *Page {
 	return &Page{
 		bb:      bytes.NewBuffer(b),
-		charset: DEFAULT_CHARSET,
+		charSet: DefaultCharset,
 	}
 }
 

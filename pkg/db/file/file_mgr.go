@@ -7,18 +7,22 @@ import (
 	"sync"
 )
 
-type FileMgr struct {
+// Manager はOSと連携してディスクブロックに対するページの読み書きを行う
+// ファイルを用いてディスクに対する読み書きを実装している
+//
+// openFiles 内の各 *os.File オブジェクトは、それぞれオープンされたファイルに対応します。
+type Manager struct {
 	dbDirectory string
-	blocksize   int
+	blockSize   int
 	isNew       bool
 	openFiles   map[string]*os.File
 	mu          sync.Mutex
 }
 
-func NewFileMgr(dbDirectory string, blocksize int) *FileMgr {
-	mgr := &FileMgr{
+func NewManager(dbDirectory string, blockSize int) *Manager {
+	mgr := &Manager{
 		dbDirectory: dbDirectory,
-		blocksize:   blocksize,
+		blockSize:   blockSize,
 		isNew:       !fileExists(dbDirectory),
 		openFiles:   make(map[string]*os.File),
 	}
@@ -30,7 +34,8 @@ func NewFileMgr(dbDirectory string, blocksize int) *FileMgr {
 	return mgr
 }
 
-func (mgr *FileMgr) Read(blk *BlockID, p *Page) error {
+// Read は指定されたファイル内の適切な位置に移動し、そのブロックの内容を指定されたページのバイトバッファに読み込む
+func (mgr *Manager) Read(blk *BlockID, p *Page) error {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
@@ -39,7 +44,7 @@ func (mgr *FileMgr) Read(blk *BlockID, p *Page) error {
 		return fmt.Errorf("cannot read block %v: %w", blk, err)
 	}
 
-	_, err = f.Seek(int64(blk.Number()*mgr.blocksize), 0)
+	_, err = f.Seek(int64(blk.Number()*mgr.blockSize), 0)
 	if err != nil {
 		return err
 	}
@@ -48,7 +53,8 @@ func (mgr *FileMgr) Read(blk *BlockID, p *Page) error {
 	return err
 }
 
-func (mgr *FileMgr) Write(blk *BlockID, p *Page) error {
+// Write は指定されたファイル内の適切な位置に移動し、そのブロックの場所にページの内容を書き込む
+func (mgr *Manager) Write(blk *BlockID, p *Page) error {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
@@ -57,7 +63,7 @@ func (mgr *FileMgr) Write(blk *BlockID, p *Page) error {
 		return fmt.Errorf("cannot write block %v: %w", blk, err)
 	}
 
-	_, err = f.Seek(int64(blk.Number()*mgr.blocksize), 0)
+	_, err = f.Seek(int64(blk.Number()*mgr.blockSize), 0)
 	if err != nil {
 		return err
 	}
@@ -66,20 +72,22 @@ func (mgr *FileMgr) Write(blk *BlockID, p *Page) error {
 	return err
 }
 
-func (mgr *FileMgr) Append(filename string) (*BlockID, error) {
+// Append はファイルの末尾に移動し、空のバイト配列を書き込むことで、OSに自動的にファイルを拡張させる
+// これによって、ファイルマネージャは常にファイルからブロックサイズのバイト数を読み取り、常にブロック境界で読み書きを行う
+func (mgr *Manager) Append(filename string) (*BlockID, error) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
-	newblknum := mgr.size(filename)
-	blk := NewBlockID(filename, newblknum)
-	b := make([]byte, mgr.blocksize)
+	newBlkSize := mgr.size(filename)
+	blk := NewBlockID(filename, newBlkSize)
+	b := make([]byte, mgr.blockSize)
 
 	f, err := mgr.getFile(blk.FileName())
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = f.Seek(int64(blk.Number()*mgr.blocksize), 0)
+	_, err = f.Seek(int64(blk.Number()*mgr.blockSize), 0)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +100,7 @@ func (mgr *FileMgr) Append(filename string) (*BlockID, error) {
 	return blk, nil
 }
 
-func (mgr *FileMgr) Length(filename string) (int, error) {
+func (mgr *Manager) Length(filename string) (int, error) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
@@ -102,24 +110,26 @@ func (mgr *FileMgr) Length(filename string) (int, error) {
 	}
 
 	length, err := f.Seek(0, 2) // Seek to the end of the file
-	return int(length) / mgr.blocksize, err
+	return int(length) / mgr.blockSize, err
 }
 
-func (mgr *FileMgr) IsNew() bool {
+func (mgr *Manager) IsNew() bool {
 	return mgr.isNew
 }
 
-func (mgr *FileMgr) BlockSize() int {
-	return mgr.blocksize
+func (mgr *Manager) BlockSize() int {
+	return mgr.blockSize
 }
 
-func (mgr *FileMgr) getFile(filename string) (*os.File, error) {
+// fileは rws モードで開く
+// sは、OSの最適化によるディスクアクセスの遅延を無効にして、ディスクアクセスが即座に行われるようにする指定
+func (mgr *Manager) getFile(filename string) (*os.File, error) {
 	if f, exists := mgr.openFiles[filename]; exists {
 		return f, nil
 	}
 
 	filePath := filepath.Join(mgr.dbDirectory, filename)
-	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0666)
+	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0666) // rwsモードで開く
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +138,7 @@ func (mgr *FileMgr) getFile(filename string) (*os.File, error) {
 	return f, nil
 }
 
-func (mgr *FileMgr) size(filename string) int {
+func (mgr *Manager) size(filename string) int {
 	f, err := mgr.getFile(filename)
 	if err != nil {
 		return -1
@@ -139,7 +149,7 @@ func (mgr *FileMgr) size(filename string) int {
 		return -1
 	}
 
-	return int(info.Size()) / mgr.blocksize
+	return int(info.Size()) / mgr.blockSize
 }
 
 func fileExists(path string) bool {

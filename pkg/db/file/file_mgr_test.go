@@ -10,21 +10,21 @@ import (
 func TestNewFileMgr(t *testing.T) {
 	mgr := newFileMgr(t)
 
-	existMgr := NewFileMgr(mgr.dbDirectory, 400)
+	existMgr := NewManager(mgr.dbDirectory, 400)
 	if existMgr.isNew != false {
 		t.Errorf("mgr.isNew should be false")
 	}
 }
 
-func newFileMgr(t *testing.T) *FileMgr {
-	blocksize := 400
+func newFileMgr(t *testing.T) *Manager {
+	blockSize := 400
 	name := util.RandomString(30)
 	dir := fmt.Sprintf(".tmp/%s", name)
-	mgr := NewFileMgr(dir, blocksize)
+	mgr := NewManager(dir, blockSize)
 	if mgr.dbDirectory != dir {
 		t.Errorf("mgr.dbDirectory should be test")
 	}
-	if mgr.blocksize != blocksize {
+	if mgr.blockSize != blockSize {
 		t.Errorf("mgr.blocksize should be 400")
 	}
 	if mgr.isNew != true {

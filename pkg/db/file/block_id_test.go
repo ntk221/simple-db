@@ -30,7 +30,7 @@ func TestNewBlockId(t *testing.T) {
 	if b.filename != "a" {
 		t.Errorf("b.FileName() should be a")
 	}
-	if b.blknum != 1 {
+	if b.blkNum != 1 {
 		t.Errorf("b.Number() should be 1")
 	}
 }

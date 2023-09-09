@@ -9,7 +9,7 @@ import (
 func TestFileMgr(t *testing.T) {
 	rootDir := util.ProjectRootDir()
 	dir := rootDir + "/.tmp"
-	fm := NewFileMgr(dir, 400)
+	fm := NewManager(dir, 400)
 	blk := NewBlockID("testfile", 2)
 	pos1 := 88
 

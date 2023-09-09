@@ -7,13 +7,13 @@ import (
 // BlockID represents a block identifier
 type BlockID struct {
 	filename string
-	blknum   int
+	blkNum   int
 }
 
-func NewBlockID(filename string, blknum int) *BlockID {
+func NewBlockID(filename string, blkNum int) *BlockID {
 	return &BlockID{
 		filename: filename,
-		blknum:   blknum,
+		blkNum:   blkNum,
 	}
 }
 
@@ -23,13 +23,13 @@ func (b *BlockID) FileName() string {
 
 // Returns the block number, which is the identifier of the block.
 func (b *BlockID) Number() int {
-	return b.blknum
+	return b.blkNum
 }
 
 func (b *BlockID) Equal(other *BlockID) bool {
-	return b.filename == other.filename && b.blknum == other.blknum
+	return b.filename == other.filename && b.blkNum == other.blkNum
 }
 
 func (b *BlockID) String() string {
-	return fmt.Sprintf("[file %s, block %d]", b.filename, b.blknum)
+	return fmt.Sprintf("[file %s, block %d]", b.filename, b.blkNum)
 }
